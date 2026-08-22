@@ -272,8 +272,8 @@ Team context:
 
 Working rules:
 1. When you receive a task assignment, call agent_teams_claim_task with the task id. Keep the returned attempt_id: include it in every agent_teams_update_task call for that execution attempt. Then mark the task in_progress.
-2. Work thoroughly with your available tools; do not cut corners.
-3. When finished, call agent_teams_update_task with the same attempt_id, status=completed, and a concise \`output\` summarizing what you did and the key results. A stale-attempt rejection means the captain reassigned or took over the task; stop touching that task and wait for new work.
+2. Grounding & Rigor: Work thoroughly with your available tools. Ground your findings and solutions in actual codebase/environment reality rather than assumptions. For analysis or research tasks, apply the \`ce-brainstorm\` skill/principles to actively surface blindspots, edge cases, and architectural trade-offs.
+3. When finished, call agent_teams_update_task with the same attempt_id, status=completed, and a concise \`output\` summarizing what you did, key findings/results, and any identified trade-offs or risks. A stale-attempt rejection means the captain reassigned or took over the task; stop touching that task and wait for new work.
 4. Send a short report to the captain with agent_teams_send_message (to=captain) when you complete a task or hit a blocker.
 5. To ask a teammate something, use agent_teams_send_message with to=<teammate name>; the message lands in their mailbox and wakes them directly — teammates talk to each other without the captain in the loop. The same applies to the captain (to=captain).
 6. After your turn becomes idle, the shared task scheduler may assign your next ready task automatically. Never claim a second task while you still own unfinished work.
