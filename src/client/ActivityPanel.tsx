@@ -414,6 +414,14 @@ function TeamSection({ team, onNavigate, historic = false, t }: {
             <span className={css.captainLine}>
               <span className={css.captainName}>{t('captain.title')}</span>
               <span className={css.captainRole}>{t('captain.role')}</span>
+              {team.captainModel && (
+                <span
+                  className={css.modelChip}
+                  title={`Captain Route: ${team.captainProvider ?? 'default'}/${team.captainModel}${team.captainReasoningEffort ? ` (${team.captainReasoningEffort})` : ''}`}
+                >
+                  {team.captainModel}
+                </span>
+              )}
             </span>
             <span className={css.captainSummary}>{t('captain.summary', { tasks: assignedCount, members: team.members.length })}</span>
           </span>
@@ -459,6 +467,14 @@ function TeamSection({ team, onNavigate, historic = false, t }: {
                     <span className={css.memberLine}>
                       <span className={css.memberName}>{member.name}</span>
                       {member.role !== '' && <span className={css.memberRole}>{member.role}</span>}
+                      {member.model && (
+                        <span
+                          className={css.modelChip}
+                          title={`Member Route: ${member.provider ?? 'default'}/${member.model}${member.reasoningEffort ? ` (${member.reasoningEffort})` : ''}`}
+                        >
+                          {member.model}
+                        </span>
+                      )}
                       <span className={css.memberState} data-activity={member.activity}>
                         <WorkGlyph active={member.activity === 'working'} />
                         {memberStateLabel(member, team.tasks, historic, t)}
@@ -638,7 +654,7 @@ export function ActivityPanel({ sessionsList, openMember, t }: {
     const shouldYield = expanded && geometry.mode === 'docked' && !compact
     if (shouldYield) {
       root.setAttribute(PANEL_OPEN_ATTRIBUTE, '')
-      root.style.setProperty(PANEL_SHIFT_PROPERTY, `${geometry.width + PANEL_CONVERSATION_GAP + 18}px`)
+      root.style.setProperty(PANEL_SHIFT_PROPERTY, `${geometry.width}px`)
     } else {
       root.removeAttribute(PANEL_OPEN_ATTRIBUTE)
       root.style.removeProperty(PANEL_SHIFT_PROPERTY)

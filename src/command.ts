@@ -51,19 +51,114 @@ declare module '@deepseek-ai/dsh-llm' {
  */
 const GESTURE = /^\/agent-teams(?=$|[\t\n\r ])/u
 
+/** Parsed options from an /agent-teams slash command or gesture line. */
+export interface ParsedAgentTeamsInput {
+  /** The residual goal text. */
+  goal: string
+  /** Explicit captain LLM provider override. */
+  captainProvider?: string
+  /** Explicit captain LLM model override. */
+  captainModel?: string
+  /** Explicit captain reasoning effort override. */
+  captainReasoningEffort?: string
+  /** Explicit member LLM provider override. */
+  memberProvider?: string
+  /** Explicit member LLM model override. */
+  memberModel?: string
+  /** Explicit member reasoning effort override. */
+  memberReasoningEffort?: string
+}
+
+/**
+ * Parse flags from an `/agent-teams` command line (e.g. `--captain-model`, `--member-model`, `--model`).
+ */
+export function parseAgentTeamsArgs(raw: string): ParsedAgentTeamsInput {
+  const tokens = raw.trim().split(/\s+/).filter(Boolean)
+  let captainProvider: string | undefined
+  let captainModel: string | undefined
+  let captainReasoningEffort: string | undefined
+  let memberProvider: string | undefined
+  let memberModel: string | undefined
+  let memberReasoningEffort: string | undefined
+  const remainingTokens: string[] = []
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]!
+    if (token.startsWith('--captain-model=')) {
+      captainModel = token.slice('--captain-model='.length)
+    } else if (token === '--captain-model' || token === '-cm') {
+      if (i + 1 < tokens.length) captainModel = tokens[++i]
+    } else if (token.startsWith('--captain-provider=')) {
+      captainProvider = token.slice('--captain-provider='.length)
+    } else if (token === '--captain-provider') {
+      if (i + 1 < tokens.length) captainProvider = tokens[++i]
+    } else if (token.startsWith('--captain-effort=') || token.startsWith('--captain-reasoning=')) {
+      captainReasoningEffort = token.split('=')[1]
+    } else if (token === '--captain-effort' || token === '--captain-reasoning') {
+      if (i + 1 < tokens.length) captainReasoningEffort = tokens[++i]
+    } else if (token.startsWith('--member-model=')) {
+      memberModel = token.slice('--member-model='.length)
+    } else if (token === '--member-model' || token === '-mm') {
+      if (i + 1 < tokens.length) memberModel = tokens[++i]
+    } else if (token.startsWith('--member-provider=')) {
+      memberProvider = token.slice('--member-provider='.length)
+    } else if (token === '--member-provider') {
+      if (i + 1 < tokens.length) memberProvider = tokens[++i]
+    } else if (token.startsWith('--member-effort=') || token.startsWith('--member-reasoning=')) {
+      memberReasoningEffort = token.split('=')[1]
+    } else if (token === '--member-effort' || token === '--member-reasoning') {
+      if (i + 1 < tokens.length) memberReasoningEffort = tokens[++i]
+    } else if (token.startsWith('--model=')) {
+      const m = token.slice('--model='.length)
+      if (!captainModel) captainModel = m
+      if (!memberModel) memberModel = m
+    } else if (token === '--model' || token === '-m') {
+      if (i + 1 < tokens.length) {
+        const m = tokens[++i]
+        if (!captainModel) captainModel = m
+        if (!memberModel) memberModel = m
+      }
+    } else {
+      remainingTokens.push(token)
+    }
+  }
+
+  return {
+    goal: remainingTokens.join(' ').trim(),
+    captainProvider,
+    captainModel,
+    captainReasoningEffort,
+    memberProvider,
+    memberModel,
+    memberReasoningEffort,
+  }
+}
+
 /**
  * The deterministic activation text. The system-prompt usage section owns
  * the full protocol; this message only switches it on for one concrete goal.
- * @param goal - the user-supplied goal, or `''` for a bare invocation.
+ * @param input - the user-supplied goal line or parsed input.
  */
-export function buildActivationDirective(goal: string): string {
-  const goalLine = goal === ''
+export function buildActivationDirective(input: string | ParsedAgentTeamsInput): string {
+  const parsed = typeof input === 'string' ? parseAgentTeamsArgs(input) : input
+  const goalLine = parsed.goal === ''
     ? 'The goal was not given — ask the user what the team should accomplish.'
-    : `Goal: ${goal}`
-  return [
+    : `Goal: ${parsed.goal}`
+  const directives: string[] = [
     'The user invoked the `/agent-teams` command. Activate the AgentTeams protocol from your instructions now: you are the captain of a multi-agent team.',
     goalLine,
-  ].join('\n')
+  ]
+  if (parsed.captainProvider || parsed.captainModel || parsed.captainReasoningEffort) {
+    directives.push(
+      `Captain LLM route overrides: provider=${parsed.captainProvider ?? 'default'}, model=${parsed.captainModel ?? 'default'}${parsed.captainReasoningEffort ? `, reasoning_effort=${parsed.captainReasoningEffort}` : ''}. Pass these options when calling agent_teams_create.`,
+    )
+  }
+  if (parsed.memberProvider || parsed.memberModel || parsed.memberReasoningEffort) {
+    directives.push(
+      `Member LLM route overrides: provider=${parsed.memberProvider ?? 'default'}, model=${parsed.memberModel ?? 'default'}${parsed.memberReasoningEffort ? `, reasoning_effort=${parsed.memberReasoningEffort}` : ''}. Use these as the default options when calling agent_teams_add_member.`,
+    )
+  }
+  return directives.join('\n')
 }
 
 /**

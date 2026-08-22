@@ -10,7 +10,7 @@
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+import { installModelSelection, type Agent } from '@deepseek-ai/dsh-agent'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { JsonValue, SessionId } from '@deepseek-ai/dsh-session'
 import { defineTool } from '@deepseek-ai/dsh-tools'
@@ -44,6 +44,8 @@ import {
   installMemberSelectionRuntime,
   interruptMember,
   memberActivity,
+  modelSelection,
+  resolveCaptainLlmSelection,
   resolveMemberLlmSelection,
   spawnMember,
   type MemberRuntimeConfig,
@@ -55,10 +57,18 @@ import { installTeamScheduler } from './scheduler.ts'
 export interface ToolsConfig {
   /** State directory name under the captain's workspace. */
   stateDir: string
+  /** Optional captain provider default. */
+  captainProvider?: string
+  /** Optional captain model override. */
+  captainModel?: string
+  /** Optional captain reasoning effort override. */
+  captainReasoningEffort?: string
   /** Member subagent provider name. */
   memberProvider: string
   /** Optional member model override. */
   memberModel?: string
+  /** Optional member reasoning effort override. */
+  memberReasoningEffort?: string
   /** Member delegation depth cap. */
   memberMaxDepth?: number
   /** Team size cap (members). */
@@ -228,10 +238,13 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
 
   ctx.tools.register(defineTool({
     name: 'agent_teams_create',
-    description: 'Create a new AgentTeams team: you (the calling agent) become the captain. A captain leads one team at a time; create tasks and members afterwards with agent_teams_add_member and agent_teams_create_task.',
+    description: 'Create a new AgentTeams team: you (the calling agent) become the captain. A captain leads one team at a time; create tasks and members afterwards with agent_teams_add_member and agent_teams_create_task. Optionally configure custom captain provider, model, or reasoning effort overrides.',
     parameters: {
       name: { type: 'string', required: true, description: 'Name for the new team (used as its stable id).' },
       description: { type: 'string', description: 'Team purpose / the goal the team will work on.' },
+      captain_provider: { type: 'string', description: 'Optional LLM provider route override for the captain.' },
+      captain_model: { type: 'string', description: 'Optional model override for the captain.' },
+      captain_reasoning_effort: { type: 'string', description: 'Optional reasoning effort override for the captain: one of the target model\'s supported effort ids, or "default" to force its default.' },
     },
     output: {
       schema: {
@@ -241,11 +254,14 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
           team_id: { type: 'string', required: true },
           team_name: { type: 'string', required: true },
           state_dir: { type: 'string', required: true },
+          captain_provider: { type: 'string' },
+          captain_model: { type: 'string' },
+          captain_reasoning_effort: { type: 'string' },
         },
       },
       render: (args, value) => [{
         type: 'text',
-        text: `Team "${value.team_name}" created (id ${value.team_id}) under ${value.state_dir}. You are the captain.`,
+        text: `Team "${value.team_name}" created (id ${value.team_id}) under ${value.state_dir}${value.captain_model !== undefined ? ` [captain model: ${value.captain_provider ?? ''}/${value.captain_model}${value.captain_reasoning_effort ? ` (${value.captain_reasoning_effort})` : ''}]` : ''}. You are the captain. Next step: Immediately call agent_teams_add_member to add your workers (e.g. researcher, engineer, reviewer) and call agent_teams_create_task to assign initial tasks.`,
       }],
     },
     async execute(args, exec) {
@@ -266,11 +282,28 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
           if (existing !== undefined) {
             throw new Error(`team id "${teamId}" is taken by another captain — pick a different team name`)
           }
+          const captainSelection = await resolveCaptainLlmSelection(ctx, captain, {
+            provider: args.captain_provider,
+            model: args.captain_model,
+            defaultProvider: config.captainProvider,
+            defaultModel: config.captainModel,
+            defaultReasoningEffort: config.captainReasoningEffort,
+            reasoningEffort: args.captain_reasoning_effort,
+          }, exec.signal)
+          if (captain.ctx) {
+            installModelSelection(captain.ctx, {
+              current: modelSelection(captainSelection),
+              assembled: undefined,
+            })
+          }
           const state: TeamState = {
             name: teamName,
             id: teamId,
             description: args.description,
             captainSessionId: captain.id,
+            captainProvider: captainSelection.provider,
+            captainModel: captainSelection.model,
+            captainReasoningEffort: captainSelection.reasoningEffort,
             createdAt: Date.now(),
             members: [],
             tasks: [],
@@ -283,7 +316,14 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
             name: state.name,
             ...state.description !== undefined ? { description: state.description } : {},
           })
-          return { team_id: state.id, team_name: state.name, state_dir: join(stateRoot, state.id) }
+          return {
+            team_id: state.id,
+            team_name: state.name,
+            state_dir: join(stateRoot, state.id),
+            captain_provider: captainSelection.provider,
+            captain_model: captainSelection.model,
+            ...captainSelection.reasoningEffort === undefined ? {} : { captain_reasoning_effort: captainSelection.reasoningEffort },
+          }
         })
       })
     },
@@ -340,6 +380,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
           provider: args.provider,
           model: args.model,
           defaultModel: config.memberModel,
+          defaultReasoningEffort: config.memberReasoningEffort,
           reasoningEffort: args.reasoning_effort,
         }, exec.signal)
         const member: TeamMember = {
@@ -465,7 +506,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
       dependencies: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Task ids this task depends on (must be completed before this task can be claimed).',
+        description: 'Task IDs this task depends on (e.g. ["t1", "t2"]). Must be existing task IDs returned by agent_teams_create_task, NOT member names, role names, or wave labels.',
       },
       assignee: { type: 'string', description: 'Optional member name this task is intended for.' },
     },
@@ -495,7 +536,12 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
         const dependencies = args.dependencies ?? []
         for (const dependency of dependencies) {
           if (!fresh.tasks.some((task) => task.id === dependency)) {
-            throw new Error(`dependency "${dependency}" does not exist in team "${fresh.name}"`)
+            const isMember = fresh.members.some((member) => member.name === dependency)
+            const availableTasks = fresh.tasks.map((task) => task.id).join(', ') || 'none'
+            if (isMember) {
+              throw new Error(`dependency "${dependency}" is a member name, but "dependencies" must be task IDs (e.g. "t1", "t2"). Available task IDs: ${availableTasks}`)
+            }
+            throw new Error(`dependency task ID "${dependency}" does not exist in team "${fresh.name}". Available task IDs: ${availableTasks}`)
           }
         }
         if (args.assignee !== undefined) requireMember(fresh, args.assignee)

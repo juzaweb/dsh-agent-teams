@@ -5,6 +5,9 @@ export interface ActivityMember {
   readonly id: string
   readonly name: string
   readonly role: string
+  readonly provider?: string
+  readonly model?: string
+  readonly reasoningEffort?: string
   readonly status?: 'idle' | 'working' | 'removed'
   readonly activity: 'working' | 'idle' | 'unknown'
   readonly progress: number
@@ -38,6 +41,9 @@ export interface ActivityTeam {
   readonly name: string
   readonly description?: string
   readonly captainSessionId: string
+  readonly captainProvider?: string
+  readonly captainModel?: string
+  readonly captainReasoningEffort?: string
   readonly members: readonly ActivityMember[]
   readonly tasks: readonly ActivityTask[]
   readonly messageCount: number

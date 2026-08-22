@@ -28,9 +28,9 @@ export const PANEL_DEFAULT_HEIGHT = 640
 export const PANEL_MIN_WIDTH = 320
 export const PANEL_MAX_WIDTH = 640
 export const PANEL_MIN_HEIGHT = 360
-export const PANEL_DOCK_TOP = 64
-export const PANEL_DOCK_RIGHT = 18
-export const PANEL_DOCK_BOTTOM = 48
+export const PANEL_DOCK_TOP = 0
+export const PANEL_DOCK_RIGHT = 0
+export const PANEL_DOCK_BOTTOM = 0
 export const PANEL_FLOAT_MARGIN = 12
 
 export const DEFAULT_PANEL_LAYOUT: PanelLayout = Object.freeze({
@@ -82,13 +82,16 @@ export function compactPanelForBounds(bounds: PanelBounds): boolean {
   return bounds.width <= PANEL_COMPACT_BREAKPOINT
 }
 
-/** Docked and compact panels always fit content; floating panels may be user-sized. */
+/** Docked sidebars use full shell height; floating panels may be content-fit or user-sized. */
 export function panelUsesAutoHeight(layout: PanelLayout, bounds: PanelBounds): boolean {
-  return compactPanelForBounds(bounds) || layout.mode === 'docked' || layout.heightMode === 'auto'
+  return compactPanelForBounds(bounds) || (layout.mode === 'floating' && layout.heightMode === 'auto')
 }
 
 /** CSS max-height ceiling that keeps an auto-height panel inside its shell. */
 export function panelMaximumHeight(layout: PanelLayout, bounds: PanelBounds): number {
+  if (layout.mode === 'docked' && !compactPanelForBounds(bounds)) {
+    return bounds.height
+  }
   const bottomInset = compactPanelForBounds(bounds) || layout.mode === 'floating'
     ? PANEL_FLOAT_MARGIN
     : PANEL_DOCK_BOTTOM
@@ -117,12 +120,9 @@ export function resolvePanelGeometry(layout: PanelLayout, bounds: PanelBounds): 
   const minimumHeight = Math.min(PANEL_MIN_HEIGHT, maximumHeight)
 
   if (layout.mode === 'docked') {
-    const y = clamp(PANEL_DOCK_TOP, PANEL_FLOAT_MARGIN, Math.max(PANEL_FLOAT_MARGIN, boundsHeight - minimumHeight - PANEL_FLOAT_MARGIN))
-    const availableHeight = Math.max(1, boundsHeight - y - PANEL_DOCK_BOTTOM)
-    const height = clamp(availableHeight, Math.min(minimumHeight, availableHeight), maximumHeight)
-    const anchorRight = clamp(bounds.anchorRight, 0, boundsWidth)
-    const maximumX = Math.max(PANEL_FLOAT_MARGIN, boundsWidth - width - PANEL_FLOAT_MARGIN)
-    const x = clamp(anchorRight - PANEL_DOCK_RIGHT - width, PANEL_FLOAT_MARGIN, maximumX)
+    const y = 0
+    const height = boundsHeight
+    const x = Math.max(0, boundsWidth - width)
     return { mode: 'docked', x, y, width, height, heightMode: layout.heightMode }
   }
 
@@ -167,7 +167,11 @@ export function resizePanelLayout(
 ): PanelLayout {
   if (start.mode === 'docked') {
     if (edge !== 'left') return resolvePanelGeometry(start, bounds)
-    return resolvePanelGeometry({ ...start, width: start.width - dx }, bounds)
+    const resolved = resolvePanelGeometry(start, bounds)
+    const maximumWidth = Math.max(1, Math.min(PANEL_MAX_WIDTH, bounds.width - PANEL_FLOAT_MARGIN))
+    const minimumWidth = Math.min(PANEL_MIN_WIDTH, maximumWidth)
+    const width = clamp(resolved.width - dx, minimumWidth, maximumWidth)
+    return { ...resolved, width, x: bounds.width - width }
   }
 
   const resolved = resolvePanelGeometry(start, bounds)

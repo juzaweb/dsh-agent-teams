@@ -131,6 +131,20 @@
     0 36px 78px color-mix(in srgb, var(--dsw-alias-label-primary) 18%, transparent);
 }
 
+.panel[data-panel-mode='docked']:not([data-compact]) {
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 1px solid var(--dsw-alias-line-normal);
+  border-radius: 0;
+  box-shadow: -1px 0 0 var(--dsw-alias-line-normal);
+  background: var(--dsw-alias-bg-module);
+}
+
+.panel[data-panel-mode='docked']:not([data-compact]) .panelHead {
+  cursor: default;
+}
+
 @keyframes agentTeamsPanelIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -219,6 +233,14 @@
   bottom: 8px;
   left: 0;
   width: 8px;
+  cursor: ew-resize;
+}
+
+.panel[data-panel-mode='docked'] .resizeHandle[data-resize-edge='left'] {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 6px;
   cursor: ew-resize;
 }
 
@@ -436,6 +458,22 @@
   color: var(--dsw-alias-label-tertiary);
   font-size: 10px;
   line-height: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.modelChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--dsw-alias-fill-quaternary, rgba(128, 128, 128, 0.12));
+  color: var(--dsw-alias-label-secondary, #888);
+  font-family: var(--dsw-alias-font-mono, monospace);
+  font-size: 9.5px;
+  line-height: 13px;
+  max-width: 130px;
+  overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

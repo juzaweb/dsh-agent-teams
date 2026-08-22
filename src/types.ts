@@ -95,6 +95,12 @@ export interface TeamState {
   description?: string
   /** Session id of the captain agent that owns this team. */
   captainSessionId: string
+  /** Resolved LLM provider route captured when this captain initialized the team. */
+  captainProvider?: string
+  /** Resolved model captured when this captain initialized the team. */
+  captainModel?: string
+  /** Resolved reasoning effort captured from the captain model route. */
+  captainReasoningEffort?: string
   createdAt: number
   /** Teammates only; the captain is implicit (the owning session). */
   members: TeamMember[]

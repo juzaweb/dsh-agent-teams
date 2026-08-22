@@ -64,9 +64,14 @@ import { defaultTranslate, en, zh } from '../lib/client/locales/index.js'
 import { steerCaptainReport } from '../lib/tools.js'
 import {
   installMemberSelectionRuntime,
+  resolveCaptainLlmSelection,
   resolveMemberLlmSelection,
   spawnMember,
 } from '../lib/members.js'
+import {
+  buildActivationDirective,
+  parseAgentTeamsArgs,
+} from '../lib/command.js'
 
 let failures = 0
 function check(label, condition, detail = '') {
@@ -504,23 +509,23 @@ const panelBounds = { width: 1440, height: 900, anchorRight: 1440 }
 const dockedPanel = resolvePanelGeometry(DEFAULT_PANEL_LAYOUT, panelBounds)
 check('docked panel follows the shell anchor and retains an available-height ceiling',
   dockedPanel.mode === 'docked'
-    && dockedPanel.x === 1034
-    && dockedPanel.y === 64
+    && dockedPanel.x === 1052
+    && dockedPanel.y === 0
     && dockedPanel.width === 388
-    && dockedPanel.height === 788
+    && dockedPanel.height === 900
     && dockedPanel.heightMode === 'auto'
-    && panelUsesAutoHeight(dockedPanel, panelBounds)
-    && panelMaximumHeight(dockedPanel, panelBounds) === 788)
+    && !panelUsesAutoHeight(dockedPanel, panelBounds)
+    && panelMaximumHeight(dockedPanel, panelBounds) === 900)
 const floatingPanel = floatPanelLayout(dockedPanel, panelBounds)
 const movedPanel = movePanelLayout(floatingPanel, 999, 999, panelBounds)
 check('floating panel movement clamps every edge inside the shell',
-  movedPanel.mode === 'floating' && movedPanel.x === 1040 && movedPanel.y === 100)
+  movedPanel.mode === 'floating' && movedPanel.x === 1040 && movedPanel.y === 12)
 const widerDockedPanel = resizePanelLayout(dockedPanel, 'left', -120, 0, panelBounds)
 check('docked left-edge resize preserves the right anchor',
-  widerDockedPanel.width === 508 && widerDockedPanel.x === 914)
+  widerDockedPanel.width === 508 && widerDockedPanel.x === 932)
 const narrowerFloatingPanel = resizePanelLayout(floatingPanel, 'left', 200, 0, panelBounds)
 check('floating left-edge resize preserves the opposite edge at minimum width',
-  narrowerFloatingPanel.width === 320 && narrowerFloatingPanel.x === 1102)
+  narrowerFloatingPanel.width === 320 && narrowerFloatingPanel.x === 1108)
 const cornerPanel = resizePanelLayout({ ...floatingPanel, x: 400, y: 200, width: 388, height: 500 }, 'corner', 1200, 1200, panelBounds)
 check('floating corner resize preserves its top-left anchor at shell limits',
   cornerPanel.x === 400 && cornerPanel.y === 200
@@ -533,7 +538,7 @@ check('floating bottom resize preserves its top edge at the shell limit',
     && bottomPanel.heightMode === 'manual')
 const redockedPanel = dockPanelLayout({ ...floatingPanel, width: 472, x: 120, y: 100, heightMode: 'manual' }, panelBounds)
 check('dock toggle preserves width while restoring shell alignment and content-fit height',
-  redockedPanel.x === 950 && redockedPanel.width === 472 && redockedPanel.heightMode === 'auto')
+  redockedPanel.x === 968 && redockedPanel.width === 472 && redockedPanel.heightMode === 'auto')
 const compactBounds = { width: 900, height: 700, anchorRight: 900 }
 const compactPanel = resolvePanelGeometry(floatingPanel, compactBounds)
 check('compact shell disables free geometry and uses a balanced inset',
@@ -757,6 +762,9 @@ const selectionContext = {
   llm: {
     resolveCallConfig: async (config) => {
       resolvedCalls.push(config)
+      if (config.provider === 'spawn' || config.provider === 'fork') {
+        throw new Error(`no adapter registered for provider "${config.provider}"`)
+      }
       const route = `${config.provider}/${config.model}`
       if (route !== 'captain-provider/captain-model' && config.reasoningEffort === 'max') {
         const error = new Error(`provider/model route ${route} does not support reasoning effort "max"`)
@@ -832,6 +840,60 @@ try {
   emptyEffortRejected = true
 }
 check('empty explicit reasoning effort is rejected', emptyEffortRejected)
+
+// Captain model resolution tests
+const captainInherited = await resolveCaptainLlmSelection(selectionContext, captain, {})
+check(
+  'captain default route snapshots current session model and effort',
+  captainInherited.provider === 'captain-provider'
+    && captainInherited.model === 'captain-model'
+    && captainInherited.reasoningEffort === 'max',
+)
+
+const captainOverridden = await resolveCaptainLlmSelection(selectionContext, captain, {
+  provider: 'other-provider',
+  model: 'other-model',
+})
+check(
+  'captain custom route uses target model default effort',
+  captainOverridden.provider === 'other-provider'
+    && captainOverridden.model === 'other-model'
+    && captainOverridden.reasoningEffort === 'low',
+)
+
+const captainConfigDefaulted = await resolveCaptainLlmSelection(selectionContext, captain, {
+  defaultModel: 'configured-member-model',
+  defaultReasoningEffort: 'high',
+})
+check(
+  'captain config default model and effort take effect',
+  captainConfigDefaulted.model === 'configured-member-model'
+    && captainConfigDefaulted.reasoningEffort === 'high',
+)
+
+// Command flag parsing tests
+const parsedFlags = parseAgentTeamsArgs('--captain-model deepseek-reasoner --member-model deepseek-chat -cm opt-cap Build a fullstack app')
+check(
+  'parseAgentTeamsArgs extracts model flags and goal',
+  parsedFlags.captainModel === 'opt-cap'
+    && parsedFlags.memberModel === 'deepseek-chat'
+    && parsedFlags.goal === 'Build a fullstack app',
+)
+
+const singleModelParsed = parseAgentTeamsArgs('--model gpt-4o Run analysis')
+check(
+  'parseAgentTeamsArgs sets both captain and member model on --model',
+  singleModelParsed.captainModel === 'gpt-4o'
+    && singleModelParsed.memberModel === 'gpt-4o'
+    && singleModelParsed.goal === 'Run analysis',
+)
+
+const directiveWithFlags = buildActivationDirective(parsedFlags)
+check(
+  'buildActivationDirective includes captain and member model directives',
+  directiveWithFlags.includes('Captain LLM route overrides')
+    && directiveWithFlags.includes('Member LLM route overrides'),
+)
 
 let startSpec
 const spawnMemberRecord = {
