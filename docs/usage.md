@@ -82,6 +82,13 @@ Precedence: Member explicit `provider` + `model` / `model` → `memberModel` →
 
 The system prompt guides the model through the teamwork protocol: Create team → Add members by role → Create tasks with dependencies → Scheduler claims ready tasks and wakes idle members → Captain monitors and guides → Reassign or take over blocked tasks safely → Report results to user and `agent_teams_delete`. Members message each other directly without bottlenecking on the captain. If a member becomes idle/ready after an interruption while still owning an open task on disk, the scheduler revokes the stale capability, issues a fresh attempt, and wakes the member again.
 
+### Parallel Task Execution & Multi-Worker Scaling
+
+- **Concurrent Dispatch**: The event-driven scheduler simultaneously claims and dispatches ready tasks to all currently available `idle` members. When multiple tasks in a DAG wave have satisfied dependencies, they will run in parallel provided multiple worker members exist.
+- **Worker Sizing & Naming**: When a mission contains multiple independent subtasks in a wave (e.g. creating tests across separate modules), the Captain should spawn dedicated workers (`engineer_1`, `engineer_2`, `engineer_3` or domain-specific names `test_engineer`, `ui_engineer`) rather than assigning all tasks to a single worker. A concurrency cap of 3–4 workers per wave is recommended to avoid LLM API rate limits.
+- **Disjoint File Scopes**: For parallel tasks running concurrently, each task's description must explicitly designate non-overlapping target files and directories to eliminate write collisions and merge conflicts.
+- **Quality Gates Convergence**: Convergence tasks such as Code Simplification (`simplifier`) and Code Review (`reviewer`) must depend on all upstream parallel task IDs (e.g. `dependencies: ["t2", "t3", "t4"]`) before beginning their audits.
+
 ## Known Limitations
 
 - Task scheduling is event-driven rather than background polling; if the captain goes offline, members cannot be resumed until the captain restarts or queries status.
