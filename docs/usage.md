@@ -80,7 +80,12 @@ Precedence: Member explicit `provider` + `model` / `model` → `memberModel` →
 
 ## Usage Protocol
 
-The system prompt guides the model through the teamwork protocol: Create team → Add members by role → Create tasks with dependencies → Scheduler claims ready tasks and wakes idle members → Captain monitors and guides → Reassign or take over blocked tasks safely → Report results to user and `agent_teams_delete`. Members message each other directly without bottlenecking on the captain. If a member becomes idle/ready after an interruption while still owning an open task on disk, the scheduler revokes the stale capability, issues a fresh attempt, and wakes the member again.
+The system prompt guides the model through the teamwork protocol: Classify Scope → Context Grounding & Synthesis → Interactive Confirmation (Standard/Deep) → Assemble Team & Create Tasks → Scheduler dispatches ready tasks to idle members → Captain monitors and guides → Multi-lens Code Review → Report results to user and `agent_teams_delete`. Members message each other directly without bottlenecking on the captain. If a member becomes idle/ready after an interruption while still owning an open task on disk, the scheduler revokes the stale capability, issues a fresh attempt, and wakes the member again.
+
+### Scope Tiers & Interactive Plan Confirmation
+
+- **Lightweight (Fast-path)**: For localized bugfixes or single-file tweaks, Captain proceeds directly to team creation and task execution in turn 1 without pausing.
+- **Standard & Deep (Confirmation Gated)**: For multi-component features, architectural changes, or complex DAGs, Captain presents the Scoping Synthesis, proposed Team Roster, and Task DAG (with dependencies and file scopes), pausing for explicit user approval before spawning members or creating tasks.
 
 ### Parallel Task Execution & Multi-Worker Scaling
 
