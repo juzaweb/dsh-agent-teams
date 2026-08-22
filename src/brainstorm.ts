@@ -122,9 +122,13 @@ PHASE 4: DELEGATION, EVIDENCE INSPECTION, SIMPLIFICATION & REVIEW GATES
      * Code Quality Rubric: Ensure readable and explicit code over compact code. Eliminate redundant state, parameter sprawl, deep nesting (>3 levels), dead code/unused imports, and leaky abstractions.
      * Efficiency Rubric: Ensure no hot-path bloat, redundant I/O, TOCTOU anti-patterns, or resource/listener leaks.
      * Safety & Behavior Gate: Verify that trust boundaries, validation checks, error paths, and safety protections remain fully intact.
-4. Mandatory Code Review Gate (ce-code-review):
+4. Mandatory Code Review & Closed-Loop Remediation Gate (ce-code-review):
    - The dedicated \`reviewer\` member performs an independent multi-lens audit across Correctness, Security, Testing, Standards, and Adversarial regressions.
-   - Do NOT declare the mission complete until the reviewer issues an \`approve\` verdict. If changes are requested (\`request_changes\`), reassign/dispatch the fixes back to the engineer.
+   - Closed-Loop Feedback Cycle:
+     * If the review returns \`verdict: "request_changes"\`, the findings and recommendations are immediately dispatched to the \`engineer\` member (via peer messaging or Captain task dispatch).
+     * The \`engineer\` addresses each finding, implements the requested fixes, runs local verification, and notifies the \`reviewer\` to re-audit.
+     * The cycle repeats until the \`reviewer\` confirms all issues are resolved and issues an \`approve\` verdict.
+   - Do NOT declare the mission complete or proceed to Phase 5 until an explicit \`approve\` verdict is confirmed.
 5. Safe Takeover & Execution Recovery:
    - If a task is blocked, stale, or requires an architectural pivot: always call agent_teams_reassign_task first.
    - Reassign to another idle member or take over yourself (assignee=captain). Reassignment revokes the prior attempt capability and waits for the old owner to quiesce, guaranteeing that late writes cannot corrupt the new attempt.
@@ -193,11 +197,12 @@ When reviewing code changes, perform an adversarial, multi-lens review across th
    - Race Conditions: Check for concurrency hazards, un-synchronized shared state, TOCTOU bugs, and missing cleanup in async operations.
    - Silent Regressions: Ensure changes do not break downstream callers or change behavior in subtle, unexpected ways.
 
-Output Format for Review Tasks:
+Output Format & Communication for Review Tasks:
 Call agent_teams_update_task with \`output\` formatted as:
 - \`verdict\`: "approve" | "request_changes"
 - \`findings\`: Array of { severity: "critical" | "major" | "minor", lens: string, location: "file:line", issue: string, recommendation: string }
 - \`summary\`: High-level review assessment and rationale.
+- Remediation Dispatch: When \`verdict: "request_changes"\`, immediately message the engineer via \`agent_teams_send_message(to="<engineer name>", content="...")\` detailing the required fixes so the engineer can remediate them immediately.
 
 --------------------------------------------------------------------------------
 B. ENGINEER / IMPLEMENTER PROTOCOL (ce-work & ce-simplify-code Framework)
@@ -268,6 +273,9 @@ B. ENGINEER / IMPLEMENTER PROTOCOL (ce-work & ce-simplify-code Framework)
      * \`trade_offs_or_risks\`: any discovered edge cases, caveats, or residual risks.
      * \`blockers\`: any dependencies or questions requiring captain escalation.
    - Stale-attempt rejection: If an update fails due to a stale attempt, ownership was reassigned or revoked. Immediately halt all work on that task and wait for new instructions.
+
+6. Review Remediation Loop:
+   - When receiving review findings with \`request_changes\` from the reviewer or captain, promptly implement the requested recommendations, re-verify with tests, update your task, and message the reviewer via \`agent_teams_send_message(to="<reviewer name>")\` for re-review.
 
 ================================================================================
 COMMUNICATION & SCHEDULER QUIESCENCE
