@@ -53,6 +53,7 @@ const WEB_SERVER_KEYS = ['webServer', 'httpServer'] as const
 const WORKSPACE_KEYS = ['workspaceRegistry', 'workspace'] as const
 
 export const name = 'agent-teams'
+export const description = 'Multi-agent team collaboration driven by natural language'
 export const inject = ['tools', 'llm', 'subagents', 'systemPrompt', 'agents']
 
 /** Plugin configuration. */
@@ -90,17 +91,20 @@ export interface Config {
 
 export const Config: z<Config> = z.object({
   stateDir: z.string().default('.agent-teams').description('State directory name under the workspace for team data'),
-  captainProvider: z.string().description('Optional LLM provider for Captain (e.g. deepseek, openai, anthropic)'),
-  captainModel: z.string().description('Optional LLM model override for Captain (e.g. deepseek-reasoner, o3-mini)'),
+  captainProvider: z.string().description('Optional LLM provider for Captain (e.g. opencode-go, openai)'),
+  captainModel: z.string().description('Optional LLM model override for Captain (e.g. mimo-v2.5, deepseek-reasoner)'),
   captainReasoningEffort: z.string().description('Optional reasoning effort for Captain (e.g. low, medium, high, max)'),
   memberProvider: z.string().default('spawn').description('Subagents spawner provider (spawn or fork)'),
-  memberModel: z.string().description('Optional default LLM model for all Members (e.g. deepseek-chat, gpt-4o)'),
+  memberModel: z.string().description('Optional default LLM model for all Members (e.g. mimo-v2.5, deepseek-chat)'),
   memberReasoningEffort: z.string().description('Optional default reasoning effort for Members'),
   memberMaxDepth: z.natural().default(1).description('Member delegation depth cap (0 disables delegation)'),
   maxMembers: z.natural().min(1).default(8).description('Maximum number of active members in a team'),
   promptSectionOrder: z.natural().default(117).description('Prompt section injection order'),
   slashCommand: z.boolean().default(true).description('Enable /agent-teams slash command and gesture trigger'),
 })
+
+export const Schema = Config
+export const schema = Config
 
 import { buildCaptainUsageProtocol } from './brainstorm.ts'
 
