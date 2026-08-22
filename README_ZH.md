@@ -121,7 +121,7 @@ dsh web
 - 状态使用文件持久化，并在单个 DSH 进程内串行操作；多个进程同时修改同一团队不保证一致。
 - 活动面板如实展示持久化状态；模型偶尔可能完成工作却没有按协议更新任务状态。
 
-完整工具列表、状态模型、Web UI 行为、配置与已知限制见 [docs/usage.md](./docs/usage.md)。
+完整工具列表、状态模型、Web UI 行为、配置与已知限制见 [docs/usage_ZH.md](./docs/usage_ZH.md)。
 
 ## 插件开发 Skill
 
@@ -135,10 +135,10 @@ npx skills add NanmiCoder/dsh-agent-teams --skill dsh-plugin-development
 
 | 指南 | 内容 |
 | --- | --- |
-| [使用指南](./docs/usage.md) | 架构、UI 行为、工具、配置、限制与验证 |
-| [验证指南](./docs/verification-guide.md) | 离线、组合、真实 e2e 与 GUI 验证 |
-| [插件开发](./docs/developing-dsh-plugins.md) | 基于本插件整理的人类可读开发指南 |
-| [README 写作](./docs/readme-writing-guide.md) | 仓库文档约定 |
+| [使用指南](./docs/usage_ZH.md) | 架构、UI 行为、工具、配置、限制与验证 |
+| [验证指南](./docs/verification-guide_ZH.md) | 离线、组合、真实 e2e 与 GUI 验证 |
+| [插件开发](./docs/developing-dsh-plugins_ZH.md) | 基于本插件整理的人类可读开发指南 |
+| [README 写作](./docs/readme-writing-guide_ZH.md) | 仓库文档约定 |
 
 ## 开发
 

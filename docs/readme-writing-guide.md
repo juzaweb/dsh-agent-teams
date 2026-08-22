@@ -1,124 +1,127 @@
-## DSH 插件 README 写作规范
+<p align="right">
+  <strong>English</strong> · <a href="./readme-writing-guide_ZH.md">简体中文</a>
+</p>
 
-> 给 coding agent 写 DeepSeek Harness 插件 README 时照做的章节模板与写作规则。
-> 提炼自 `dsh-agent-teams` 成品 README 的多轮迭代（功能/原理/UI/工具/安装/配置/使用/验证/限制全结构），并对照 DSH 仓库内包 README 的风格（`packages/preset`、`packages/bundle`、`packages/client/ui-workflow-run`：精炼、表格化）。
+## DSH Plugin README Writing Guidelines
 
-### 0. 语言与篇幅策略
+> A chapter template and writing standard for coding agents when drafting README documentation for DeepSeek Harness plugins.
+> Distilled from multiple iterations of the `dsh-agent-teams` production README (covering features, architecture, UI, tools, installation, configuration, usage, verification, and limits), aligned with the concise, tabular style of in-tree DSH packages (`packages/preset`, `packages/bundle`, `packages/client/ui-workflow-run`).
 
-- **独立插件项目**（面向安装用户，如 `dsh-agent-teams`）：中文为主，命令、工具名、标识符、字段名保留英文；解释性句子用中文。
-- **DSH 仓库内包**（`packages/*/README.md`）：英文为主，一段话简介 + 分节 + 表格，每节不超过几段；仓库内 README 是给维护者/协作者的，不需要"安装/使用"教程。
-- 本文模板两种场景同构：结构顺序不变，语言与详略按读者切换。
-- 篇幅：独立插件 README 200–400 行封顶；超过说明某节在堆砌实现细节（见 §2 避免清单）。
+### 0. Language & Length Strategy
 
-### 1. 结构模板（一级标题顺序）
+- **Standalone plugin projects** (user-facing, such as `dsh-agent-teams`): Provide bilingual documentation (`README.md` in English, `README_ZH.md` in Chinese) with technical terms, commands, and tool identifiers remaining consistent.
+- **In-tree DSH packages** (`packages/*/README.md`): Primarily English, with a concise one-paragraph summary, structured sections, and clear tables. In-tree READMEs target maintainers and contributors rather than end-user tutorials.
+- Both formats share identical section hierarchy; detail depth adjusts based on target audience.
+- Length: Standalone plugin READMEs should ideally stay within 200–400 lines. Exceeding this indicates unnecessary internal implementation details (see §2).
 
-| 顺序 | 章节 | 写什么 | 不写什么 |
+### 1. Section Structure Template (Top-Level Headings)
+
+| Order | Section | What to Include | What to Avoid |
 |---|---|---|---|
-| 1 | 简介（标题下一段） | 一句话价值（安装后用户能做什么）+ 3–5 条核心特性（黑体关键词） | 版本历史、Roadmap、致谢 |
-| 2 | `## 工作原理` | 能力接缝表格 + 数据流一句话 + 状态机一句话（见 §2） | 架构图、贴源码、实现细节堆砌 |
-| 3 | `## Web UI`（如有） | 面板形态、挂载位置、交互要点、数据链路 | 每个 CSS 类、动画参数逐条 |
-| 4 | `## 工具一览` | 表格：工具名 | 作用（一句话，含关键语义/边界） | 工具参数 schema 全量 |
-| 5 | `## 安装` | 命令 + 生效时机（重启/HMR）+ 备选方式 | 构建链内部原理 |
-| 6 | `## 配置` | 配置项表格 + 一段 YAML 示例 | 每个配置的源码出处 |
-| 7 | `## 使用` | 一段话 + 1 条可直接复制的示例指令 | 完整对话脚本 |
-| 8 | `## 验证` | 三层：0 真实已验记录 / 1 离线 / 2 端到端（见 §4） | 把"未验证"写成"已验证" |
-| 9 | `## 已知限制` | 每条 = 现象 + 原因/影响 + 缓解（见 §5） | 自我批评、无缓解的抱怨 |
-| 10 | `## License` | 许可证名 | — |
+| 1 | Introduction (under title) | One-sentence value proposition (what users can do after installing) + 3–5 core features (bold keywords) | Version history, roadmaps, acknowledgments |
+| 2 | `## How It Works` | Capability seams table + one-line data flow + one-line state machine (see §2) | ASCII architecture diagrams, source code dumps |
+| 3 | `## Web UI` (if applicable) | Panel structure, mount points, key interactions, data link | Individual CSS classes or raw animation parameters |
+| 4 | `## Tool Reference` | Table: Tool name \| Purpose (one sentence with key semantics/boundaries) | Full raw JSON parameter schemas |
+| 5 | `## Installation` | Commands + effective time (restart/HMR) + alternative methods | Build chain internals |
+| 6 | `## Configuration` | Option table + concise YAML snippet | Code citations for every config field |
+| 7 | `## Usage` | One paragraph + 1 copyable prompt example | Full verbose multi-turn chat transcripts |
+| 8 | `## Verification` | Three tiers: 0 Real verification records / 1 Offline / 2 End-to-end (see §4) | Claiming unverified items as verified |
+| 9 | `## Known Limitations` | Each item = Symptom + Root cause/Impact + Mitigation (see §5) | Self-criticism or unmitigated complaints |
+| 10 | `## License` | License name | — |
 
-### 2. 工作原理怎么写
+### 2. How to Write "How It Works"
 
-**开篇用能力接缝表格**（这是 DSH 插件的架构语言——一切皆插件、能力即接缝）：
+**Begin with a Capability Seams Table** (this is the architectural language of DSH plugins—everything is a plugin, capabilities are seams):
 
 ```markdown
-`<插件名>` 复用了 DSH 的能力接缝（capability seam）而不是重新发明：
+`<plugin-name>` reuses DeepSeek Harness capability seams rather than reinventing them:
 
-| DSH 能力 | 插件用法 |
+| DSH Capability | Plugin Usage |
 |---|---|
-| `ctx.tools` 注册表 | 注册 N 个 `xxx_*` 工具（与 `tool-workflow` 同一注册路径） |
-| `ctx.subagents.startContinuable()` | 创建成员：durable 可续聊子代理 |
-| `ctx.systemPrompt.section()` | 注册使用策略提示段 |
-| `ctx.httpServer.register()` | 提供面板数据路由 `/plugins/xxx/state` |
-| 文件系统 | 状态持久化在 `<workspace>/.xxx/<id>/` |
+| `ctx.tools` registry | Registers N `xxx_*` tools (same registration pathway as `tool-workflow`) |
+| `ctx.subagents.startContinuable()` | Spawns members: durable continuable subagents |
+| `ctx.systemPrompt.section()` | Registers the usage protocol prompt section |
+| `ctx.httpServer.register()` | Serves panel data route `/plugins/xxx/state` |
+| File system | Persists state under `<workspace>/.xxx/<id>/` |
 ```
 
-- 表格列出**真正用到的能力**，每行"DSH 能力 → 插件用途"一句话；这是读者判断"这个插件怎么融入 DSH"的最快路径。
-- 表格后补**数据流一句话**："工具执行 → 磁盘状态（真相源）→ host 快照路由 → 浮层轮询渲染。会话日志事件继续写入（重放/审计）。"（一个方向链，不要画 ASCII 大图。）
-- **状态机一句话**："任务状态机：`pending → claimed → in_progress → completed | failed | cancelled`，状态迁移在白名单内校验。"（能一句话压缩的状态机绝不用多段。）
-- 需要引用文件时只给**入口路径**（如 `src/snapshot.ts`），不贴代码。
-- **避免**：架构图（ASCII/plantuml）、实现细节堆砌（锁、队列、重试策略）、重复仓库 AGENTS.md 已有的通用机制解释。
+- List **only capabilities actually used**, with a one-sentence "DSH Capability → Plugin Usage" mapping per row. This is the fastest way for readers to understand how the plugin integrates.
+- Follow up with a **one-line data flow**: "Tool execution → Disk state (source of truth) → Host snapshot route → Browser polling render. Session log events recorded concurrently (for replay/audit)."
+- Add a **one-line state machine**: "Task state machine: `pending → claimed → in_progress → completed | failed | cancelled`, with validated transitions."
+- Reference file paths (e.g. `src/snapshot.ts`) rather than inlining source blocks.
+- **Avoid**: Huge ASCII/plantuml diagrams, implementation detail dumps (locks, queues, retry loops), or re-explaining generic DSH concepts.
 
-### 3. 安装与配置
+### 3. Installation & Configuration
 
-**安装命令必须可复制**（绝对路径/明确 cd）：
+**Installation commands must be copyable** (clear paths or commands):
 
 ```markdown
 ```sh
 cd /path/to/<plugin>
-pnpm build            # 产出 lib/
+pnpm build            # Produces lib/
 dsh plugin --profile web add /absolute/path/to/<plugin>
 ```
 ```
 
-- 一句话说明安装后发生什么（`dsh plugin` 安装进 profile 并加入 `dsh.profile.bundles` 层列表；bundle patch 挂载主机组合行）。
-- **必须写生效时机**："> 注意：`dsh plugin` 修改的是该 profile 的 `package.json`/manifest；**重启 dsh 服务后**插件才会加载。"
-- 配置节用**表格 + 一段 YAML 示例**：
+- Explain in one sentence what occurs (`dsh plugin` installs into the profile and adds to `dsh.profile.bundles`; the bundle patch mounts the plugin row).
+- **Explicitly state effective time**: "> Note: `dsh plugin` updates the profile manifest; **restart the DSH instance** to load the plugin."
+- Structure configuration with a **table + YAML snippet**:
 
 ```markdown
-| 字段 | 默认值 | 说明 |
+| Field | Default | Description |
 |---|---|---|
-| `stateDir` | `.agent-teams` | 状态目录名（工作区下） |
-| `memberProvider` | `spawn` | 成员子代理 provider |
-| `memberMaxDepth` | `1` | 成员再委派深度上限（`0` = 禁止） |
+| `stateDir` | `.agent-teams` | State directory name under workspace |
+| `memberProvider` | `spawn` | Subagent runtime provider |
+| `memberMaxDepth` | `1` | Subagent delegation depth limit (`0` = disabled) |
 ```
 
-- **兼容性/部署差异放引用注释块**（可复用模式④），但必须基于目标部署源码：
+- **Place compatibility notes in blockquotes** (Reusable Pattern #4):
 
 ```markdown
-> 兼容性说明：本插件面向的 DSH checkout 通过 package.json `dsh.client` 与
-> `exports["./client"]` 发现浏览器 bundle；若部署版本不同，请先核对其 client-modules 实现。
+> Compatibility Note: This plugin discovers browser bundles via package.json `dsh.client` and
+> `exports["./client"]`. If targeting a different DSH release, verify its client-modules behavior first.
 ```
 
-### 4. 验证章节规范（三层）
+### 4. Verification Section Standards (Three Tiers)
 
-验证章节是插件 README 信任度的核心，必须**分层 + 诚实标注"已验/待验"**：
+The verification section establishes plugin reliability and must be **tiered and honest about verified status**:
 
-| 层 | 标题 | 内容 | 前置条件 |
+| Tier | Heading | Content | Prerequisite |
 |---|---|---|---|
-| 0 | `### 0. 已在独立实例上真实验证` | 已真实跑通的验证清单（模型名、命令、产物证据），**每项都是发生过的事实** | 已实际执行过 |
-| 1 | `### 1. 离线验证（不需要启动任何服务）` | 可复制的构建/冒烟/组合验证命令 | 无 |
-| 2 | `### 2. 端到端验证（需要重启服务，请自行安排在合适时机）` | 给用户的 GUI/headless 验证步骤 | 用户安排时机 |
+| 0 | `### 0. Verified on Dedicated Instance` | Verified checklist (model, command, artifacts), **each being an executed fact** | Actually executed |
+| 1 | `### 1. Offline Verification (No services required)` | Copyable build, smoke test, and composition check commands | None |
+| 2 | `### 2. End-to-End Verification (Requires restart)` | Step-by-step GUI / headless verification steps for users | At user's convenience |
 
-- **0 层记录清单模板**（照此粒度记录）：
-  - headless profile 端到端：`dsh --profile headless "…"`（真实 LLM 跑通全流程）
-  - 落盘/日志验证：会话日志含完整事件流（列出事件名与次数，如 `team-created ×1, member-added ×2…`）
-  - UI 加载链路：浏览器名册含插件、`GET /plugins/xxx/client.js → 200`、数据路由返回形状
-  - GUI 端到端：驱动真实浏览器后的面板行为（自动展开、状态更新、收起），附截图路径
-- **命令规范**：全部可直接复制（`cd /path/…` 开头、注释标注预期输出如"应看到 xxx 行"）；声明"不会触碰正在运行的 profile / 不 boot 服务"的验证要写明。
-- **原则**：0 层只写真实发生过的；1 层是开发者的自检入口；2 层留给用户在自己实例上复现——三个层次缺一不可，混写会毁掉信任。
+- **Tier 0 Checklist Items**:
+  - Headless profile e2e: `dsh --profile headless "..."` (real LLM driving full workflow)
+  - Persistence & log audit: Session log contains expected event stream (event names and counts: `team-created ×1, member-added ×2...`)
+  - UI loading pipeline: Browser bundle discovery, `GET /plugins/xxx/client.js → 200`, data route payload validation
+  - GUI e2e: Real browser automated actions (auto-expansion, updates, collapse), with screenshots
+- **Command Formatting**: Direct copyable snippets (`cd /path/...` prefix, comments with expected output).
+- **Principle**: Tier 0 records real facts; Tier 1 allows developer self-check; Tier 2 guides user reproduction.
 
-### 5. 已知限制怎么写
+### 5. How to Write Known Limitations
 
-- 每条限制 = **现象 + 原因/影响 + 缓解**，一条 bullet 内说完。例：
-  - "成员只有在收到消息（被唤醒）后才行动，没有常驻轮询；……队长离线时消息留在邮箱、待队长下次操作时投递。"（现象 → 影响 → 缓解路径）
-  - "成员（模型）不总是严格走工具'仪式'（如完成时不调 `update_task`）——面板如实反映事件流，可能与磁盘真相有短暂偏差；队长以 `agent_teams_status`/文件为准汇总。"
-- **为什么重要**：限制节是"行为契约的负空间"——它提前回答用户必然遇到的问题（"为什么任务显示还没完成？"），防止把设计取舍误读成 bug；也是后续迭代的 TODO 清单来源。
-- 写**真实限制**而非套话：设计取舍（文件级持久化、单队长单团队）、环境依赖（优先使用 `shell.overlay`，旧版无 slot 时才由 portal 自管几何；宽屏让位、窄屏 overlay）、模型行为（不守仪式）、边界（旧会话无历史事件）。
-- 每条给**缓解或指引**（"以 status 为准""待队长下次操作投递"），不写无解的抱怨。
+- Each limitation = **Symptom + Root cause/Impact + Mitigation**, expressed in a single bullet. Example:
+  - "Members only act when woken by messages; there is no constant background polling. If the captain goes offline, messages remain queued in mailboxes until resumed." (Symptom → Impact → Mitigation)
+  - "Member LLMs might not always strictly follow tool rituals (e.g. completing work without calling `update_task`). The UI reflects disk state, and the captain reconciles via `agent_teams_status`."
+- **Why this matters**: Limitations define the negative space of the contract—answering questions upfront ("Why isn't the task marked finished yet?") and preventing intentional trade-offs from being misidentified as bugs.
+- List **real architectural limits**: design choices (file persistence, 1 team per captain), platform requirements (`shell.overlay`, responsive concessions), and model behavior boundaries.
 
-### 6. 五条可复用模式（自 `dsh-agent-teams` 提炼）
+### 6. Five Reusable Patterns (Distilled from `dsh-agent-teams`)
 
-1. **能力接缝表开篇**：架构解释永远从"DSH 能力 | 插件用法"表格开始——比任何叙述都快地建立"它怎么融入 DSH"的心智模型。
-2. **验证命令全部可复制**：`cd /path/to/…` + 绝对路径 + 注释标注预期输出；用户可以直接粘贴执行，而不是"看图理解"。
-3. **兼容性/部署差异用引用注释块**（`> 兼容性说明：…`）：把“目标版本怎样发现 client bundle”“哪些改动需要重启”这类一次性背景从正文隔离，正文保持干净。
-4. **状态机与数据流用一句话压缩**：状态流转一行写完、数据链路一个箭头链写完——能一句话表达的状态机绝不用多段，需要展开的细节放代码/文件引用。
-5. **"真实已验"放在验证章节最前并诚实分级**：0 层（我已验证，带证据）→ 1 层（离线自检）→ 2 层（你来自测）——信任来自分清"我跑过"与"你去跑"。
+1. **Start with Capability Seams**: Explain architecture using a "DSH Capability | Plugin Usage" table.
+2. **Make Commands Copyable**: Use absolute paths or clean commands with comments indicating expected outputs.
+3. **Isolate Compatibility in Blockquotes** (`> Compatibility Note: ...`): Keep environment-specific notes cleanly separated from main documentation.
+4. **Compress State Machines & Data Flow**: Express pipelines in concise single-line representations.
+5. **Lead Verification with Real Facts**: Structure verification clearly (Tier 0 Real Verification → Tier 1 Offline → Tier 2 User E2E).
 
-### 7. 完成检查清单
+### 7. Completion Checklist
 
-- [ ] 简介一句话回答了"装了这个插件用户能做什么"
-- [ ] 工作原理以能力接缝表格开头，数据流/状态机各一句话
-- [ ] 安装命令可直接复制，且写明了生效时机（重启）
-- [ ] 配置有字段/默认值/说明表格
-- [ ] 验证分三层，0 层只含真实发生过的验证（带命令与证据）
-- [ ] 已知限制每条含缓解路径
-- [ ] 没有贴源码、没有架构大图、没有把实现细节当卖点
+- [ ] Introduction answers what users can accomplish after installing
+- [ ] How It Works starts with a capability seams table, with 1-line data flow and state machine
+- [ ] Installation commands are copyable and clearly state when changes take effect (restart)
+- [ ] Configuration includes a field/default/description table
+- [ ] Verification is divided into three tiers with factual Tier 0 records
+- [ ] Every known limitation includes a clear mitigation path
+- [ ] No raw source code dumps, huge diagrams, or internal implementation clutter
