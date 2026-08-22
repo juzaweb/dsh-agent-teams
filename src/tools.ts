@@ -262,7 +262,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
       },
       render: (args, value) => [{
         type: 'text',
-        text: `Team "${value.team_name}" created (id ${value.team_id}) under ${value.state_dir}${value.captain_model !== undefined ? ` [captain model: ${value.captain_provider ?? ''}/${value.captain_model}${value.captain_reasoning_effort ? ` (${value.captain_reasoning_effort})` : ''}]` : ''}. You are the captain. Next step: Immediately call agent_teams_add_member to add your workers (e.g. researcher, engineer, reviewer) and call agent_teams_create_task to assign initial tasks.`,
+        text: `Team "${value.team_name}" created (id ${value.team_id}) under ${value.state_dir}${value.captain_model !== undefined ? ` [captain model: ${value.captain_provider ?? ''}/${value.captain_model}${value.captain_reasoning_effort ? ` (${value.captain_reasoning_effort})` : ''}]` : ''}. You are the captain. Next step: Immediately call agent_teams_add_member to add your dedicated workers (e.g. reviewer and 1 dedicated worker per parallel task: engineer_1, engineer_2, ...) and call agent_teams_create_task to assign initial tasks.`,
       }],
     },
     async execute(args, exec) {
@@ -509,7 +509,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
         items: { type: 'string' },
         description: 'Task IDs this task depends on (e.g. ["t1", "t2"]). Can be task IDs returned by agent_teams_create_task or task subjects/slugs. Must not be member names, role names, or wave labels.',
       },
-      assignee: { type: 'string', description: 'Optional member name this task is intended for.' },
+      assignee: { type: 'string', description: 'Optional member name this task is intended for. Must be an active worker member name (e.g. "engineer_1", "reviewer"). NEVER assign tasks to "captain".' },
     },
     output: {
       schema: {
@@ -552,7 +552,13 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
             resolvedDependencies.push(matchedTask.id)
           }
         }
-        if (args.assignee !== undefined) requireMember(fresh, args.assignee)
+        if (args.assignee !== undefined) {
+          const targetAssignee = args.assignee.trim()
+          if (targetAssignee.toLowerCase() === CAPTAIN_KEY) {
+            throw new Error(`cannot assign task to "${args.assignee}": Captain is the orchestrator. Tasks must be assigned to worker members (e.g. engineer_1, reviewer)`)
+          }
+          requireMember(fresh, targetAssignee)
+        }
         const task: TeamTask = {
           id: `t${fresh.taskSeq + 1}`,
           subject: args.subject,
