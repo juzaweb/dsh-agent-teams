@@ -654,7 +654,7 @@ export function ActivityPanel({ sessionsList, openMember, t }: {
     const shouldYield = expanded && geometry.mode === 'docked' && !compact
     if (shouldYield) {
       root.setAttribute(PANEL_OPEN_ATTRIBUTE, '')
-      root.style.setProperty(PANEL_SHIFT_PROPERTY, `${geometry.width + PANEL_CONVERSATION_GAP + 18}px`)
+      root.style.setProperty(PANEL_SHIFT_PROPERTY, `${geometry.width}px`)
     } else {
       root.removeAttribute(PANEL_OPEN_ATTRIBUTE)
       root.style.removeProperty(PANEL_SHIFT_PROPERTY)

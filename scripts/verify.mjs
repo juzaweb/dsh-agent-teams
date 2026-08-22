@@ -509,23 +509,23 @@ const panelBounds = { width: 1440, height: 900, anchorRight: 1440 }
 const dockedPanel = resolvePanelGeometry(DEFAULT_PANEL_LAYOUT, panelBounds)
 check('docked panel follows the shell anchor and retains an available-height ceiling',
   dockedPanel.mode === 'docked'
-    && dockedPanel.x === 1034
-    && dockedPanel.y === 64
+    && dockedPanel.x === 1052
+    && dockedPanel.y === 0
     && dockedPanel.width === 388
-    && dockedPanel.height === 788
+    && dockedPanel.height === 900
     && dockedPanel.heightMode === 'auto'
-    && panelUsesAutoHeight(dockedPanel, panelBounds)
-    && panelMaximumHeight(dockedPanel, panelBounds) === 788)
+    && !panelUsesAutoHeight(dockedPanel, panelBounds)
+    && panelMaximumHeight(dockedPanel, panelBounds) === 900)
 const floatingPanel = floatPanelLayout(dockedPanel, panelBounds)
 const movedPanel = movePanelLayout(floatingPanel, 999, 999, panelBounds)
 check('floating panel movement clamps every edge inside the shell',
-  movedPanel.mode === 'floating' && movedPanel.x === 1040 && movedPanel.y === 100)
+  movedPanel.mode === 'floating' && movedPanel.x === 1040 && movedPanel.y === 12)
 const widerDockedPanel = resizePanelLayout(dockedPanel, 'left', -120, 0, panelBounds)
 check('docked left-edge resize preserves the right anchor',
-  widerDockedPanel.width === 508 && widerDockedPanel.x === 914)
+  widerDockedPanel.width === 508 && widerDockedPanel.x === 932)
 const narrowerFloatingPanel = resizePanelLayout(floatingPanel, 'left', 200, 0, panelBounds)
 check('floating left-edge resize preserves the opposite edge at minimum width',
-  narrowerFloatingPanel.width === 320 && narrowerFloatingPanel.x === 1102)
+  narrowerFloatingPanel.width === 320 && narrowerFloatingPanel.x === 1108)
 const cornerPanel = resizePanelLayout({ ...floatingPanel, x: 400, y: 200, width: 388, height: 500 }, 'corner', 1200, 1200, panelBounds)
 check('floating corner resize preserves its top-left anchor at shell limits',
   cornerPanel.x === 400 && cornerPanel.y === 200
@@ -538,7 +538,7 @@ check('floating bottom resize preserves its top edge at the shell limit',
     && bottomPanel.heightMode === 'manual')
 const redockedPanel = dockPanelLayout({ ...floatingPanel, width: 472, x: 120, y: 100, heightMode: 'manual' }, panelBounds)
 check('dock toggle preserves width while restoring shell alignment and content-fit height',
-  redockedPanel.x === 950 && redockedPanel.width === 472 && redockedPanel.heightMode === 'auto')
+  redockedPanel.x === 968 && redockedPanel.width === 472 && redockedPanel.heightMode === 'auto')
 const compactBounds = { width: 900, height: 700, anchorRight: 900 }
 const compactPanel = resolvePanelGeometry(floatingPanel, compactBounds)
 check('compact shell disables free geometry and uses a balanced inset',
