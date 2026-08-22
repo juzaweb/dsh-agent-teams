@@ -7,9 +7,13 @@ import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 // The frame-level overlay is declared by ui-layout. This import is type-only;
 // ctx.slots.inject below owns the runtime wait for the declaration.
 import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+// Module-loading import: ctx.locale is declared by dsh-client-locale.
+import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 import { ActivityPanel } from './ActivityPanel.tsx'
 import { AgentTeamsCard, type AgentTeamsCardInjected } from './AgentTeamsCard.tsx'
 import { agentTeamsCardDefinition } from './agent-teams-card-definition.ts'
+import { en, zh } from './locales/index.ts'
 import { openAgentTeamMember } from './session-navigation.ts'
 
 /** Required services: conversation nodes, slots, and sessions navigation. */
@@ -26,20 +30,26 @@ function HiddenAgentTeamsCommand(): null {
  * monitor via a window event — the recovery path for an old session.
  */
 export function apply(ctx: ClientContext): void {
+  if (ctx.locale) {
+    ctx.locale.register('agentTeams', { zh, en })
+  }
+
   const openMember = (parentId: SessionId, childId: SessionId): void => {
     void openAgentTeamMember(ctx.sessions, parentId, childId).catch((error: unknown) => {
       console.warn(`agent-teams: failed to open member transcript ${childId}: ${String(error)}`)
     })
   }
-  const Panel = () => <ActivityPanel
+  const Panel = (props: PropsLocale<'agentTeams'>) => <ActivityPanel
     sessionsList={ctx.sessions.list}
     openMember={openMember}
+    t={props.t}
   />
   ctx.slots.inject('shell.overlay', () => ctx.slots.register({
     name: 'shell.overlay',
     id: 'agent-teams-activity',
     order: 80,
     label: 'AgentTeams activity',
+    locale: 'agentTeams',
   }, Panel))
 
   // The host command is only the slash-menu/admission surface. Its input is
@@ -54,8 +64,10 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('conversation.chat.node', () => ctx.slots.register({
     name: 'conversation.chat.node',
     key: 'agent-teams',
+    locale: 'agentTeams',
     inject: (): AgentTeamsCardInjected => ({
       openMember,
     }),
   }, AgentTeamsCard))
 }
+

@@ -60,6 +60,7 @@ import {
 import { memberArtUrl } from '../lib/client/artwork.js'
 import { parseAgentTeamsCreateArgs } from '../lib/client/agent-teams-card-definition.js'
 import { openAgentTeamMember } from '../lib/client/session-navigation.js'
+import { defaultTranslate, en, zh } from '../lib/client/locales/index.js'
 import { steerCaptainReport } from '../lib/tools.js'
 import {
   installMemberSelectionRuntime,
@@ -259,6 +260,19 @@ check(
     && !agentTeamsCardSource.includes('setInterval(')
     && !agentTeamsCardSource.includes('fetch('),
   'the global panel must recover cardless sessions without duplicate card pollers',
+)
+check(
+  'zh and en localization dictionaries have identical non-empty keys',
+  Object.keys(zh).length > 0
+    && JSON.stringify(Object.keys(zh).sort()) === JSON.stringify(Object.keys(en).sort())
+    && Object.values(zh).every((v) => typeof v === 'string' && v.length > 0)
+    && Object.values(en).every((v) => typeof v === 'string' && v.length > 0),
+  `zh keys: ${Object.keys(zh).length}, en keys: ${Object.keys(en).length}`,
+)
+check(
+  'defaultTranslate interpolates placeholders correctly',
+  defaultTranslate('card.memberCount', { count: 5 }).includes('5')
+    && defaultTranslate('member.status.runningTask', { id: 'T-1' }).includes('T-1'),
 )
 
 console.log('2/8 pure rules')
