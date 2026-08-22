@@ -261,7 +261,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
       },
       render: (args, value) => [{
         type: 'text',
-        text: `Team "${value.team_name}" created (id ${value.team_id}) under ${value.state_dir}${value.captain_model !== undefined ? ` [captain model: ${value.captain_provider ?? ''}/${value.captain_model}${value.captain_reasoning_effort ? ` (${value.captain_reasoning_effort})` : ''}]` : ''}. You are the captain.`,
+        text: `Team "${value.team_name}" created (id ${value.team_id}) under ${value.state_dir}${value.captain_model !== undefined ? ` [captain model: ${value.captain_provider ?? ''}/${value.captain_model}${value.captain_reasoning_effort ? ` (${value.captain_reasoning_effort})` : ''}]` : ''}. You are the captain. Next step: Immediately call agent_teams_add_member to add your workers (e.g. researcher, engineer, reviewer) and call agent_teams_create_task to assign initial tasks.`,
       }],
     },
     async execute(args, exec) {
@@ -379,7 +379,6 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
         const selection = await resolveMemberLlmSelection(ctx, captain, {
           provider: args.provider,
           model: args.model,
-          defaultProvider: config.memberProvider,
           defaultModel: config.memberModel,
           defaultReasoningEffort: config.memberReasoningEffort,
           reasoningEffort: args.reasoning_effort,

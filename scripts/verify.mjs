@@ -762,6 +762,9 @@ const selectionContext = {
   llm: {
     resolveCallConfig: async (config) => {
       resolvedCalls.push(config)
+      if (config.provider === 'spawn' || config.provider === 'fork') {
+        throw new Error(`no adapter registered for provider "${config.provider}"`)
+      }
       const route = `${config.provider}/${config.model}`
       if (route !== 'captain-provider/captain-model' && config.reasoningEffort === 'max') {
         const error = new Error(`provider/model route ${route} does not support reasoning effort "max"`)
