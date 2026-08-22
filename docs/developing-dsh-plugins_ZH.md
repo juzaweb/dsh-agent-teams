@@ -514,7 +514,12 @@ dsh --profile <scratch> --dump-config   # 验证组合树里出现插件行（�
 - **根因**：tsc 产物在 `lib/client/`，但 css 源在 `src/client/`。
 - **解决**：resolveId 找不到 emitted 路径时将 `/lib/` 替换为 `/src/` 再查。
 
-### 5.8 其他实战备忘
+### 5.8 未 inject 访问可选服务报 cannot get property without inject
+- **现象**：`failed to apply loader entry: cannot get property "locale" without inject`。
+- **根因**：直接在 `ctx` 上读属性（如 `if (ctx.locale)`）会触发 Cordis 代理的 inject 检查，若 `locale` 未在 `export const inject` 声明则直接抛错。
+- **解决**：对非必选或条件性服务使用 `ctx.get('serviceName')` 探测，并结合 `ctx.on('internal/service', name => ...)` 监听后置加载的服务。
+
+### 5.9 其他实战备忘
 - **轮询竞态**：使用 in-flight 标志防重叠。
 - **响应形状校验**：使用 `Array.isArray(body.teams)` 防异常闪烁。
 - **导航即收起**：点击跳转子会话时同步 `setOpen(false)`。

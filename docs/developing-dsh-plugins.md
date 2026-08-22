@@ -352,6 +352,11 @@ dsh --profile <scratch> --dump-config
 - **Cause**: tsc emits files to `lib/client/`, but CSS files remain in `src/client/`.
 - **Fix**: Add fallback resolution mapping `/lib/` to `/src/` during CSS module loading.
 
+### 5.8 Accessing Optional Services Without Inject (cannot get property "xxx" without inject)
+- **Symptom**: `failed to apply loader entry: cannot get property "locale" without inject`.
+- **Cause**: Reading properties directly on `ctx` (e.g. `if (ctx.locale)`) triggers Cordis proxy validation. If the service is not listed in `export const inject`, Cordis throws.
+- **Fix**: Use `ctx.get('serviceName')` for optional or conditionally available services, and listen to `ctx.on('internal/service', name => ...)` for late-binding services.
+
 ## 6. Verification Hierarchy
 
 1. `pnpm typecheck` → 2. `pnpm build` → 3. `node scripts/verify.mjs` → 4. `dsh --profile <scratch> --dump-config` → 5. Headless real execution → 6. Dedicated web instance → 7. ego-browser GUI automation.

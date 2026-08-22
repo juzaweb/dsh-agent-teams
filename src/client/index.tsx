@@ -30,9 +30,18 @@ function HiddenAgentTeamsCommand(): null {
  * monitor via a window event — the recovery path for an old session.
  */
 export function apply(ctx: ClientContext): void {
-  if (ctx.locale) {
-    ctx.locale.register('agentTeams', { zh, en })
+  const registerLocale = (): void => {
+    const locale = ctx.get('locale')
+    if (locale) {
+      locale.register('agentTeams', { zh, en })
+    }
   }
+  registerLocale()
+  ctx.on('internal/service', (name) => {
+    if (name === 'locale') {
+      registerLocale()
+    }
+  })
 
   const openMember = (parentId: SessionId, childId: SessionId): void => {
     void openAgentTeamMember(ctx.sessions, parentId, childId).catch((error: unknown) => {
