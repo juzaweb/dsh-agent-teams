@@ -440,6 +440,22 @@
   white-space: nowrap;
 }
 
+.modelChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--dsw-alias-fill-quaternary, rgba(128, 128, 128, 0.12));
+  color: var(--dsw-alias-label-secondary, #888);
+  font-family: var(--dsw-alias-font-mono, monospace);
+  font-size: 9.5px;
+  line-height: 13px;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .captainSummary,
 .memberStatusLine {
   overflow: hidden;

@@ -64,9 +64,14 @@ import { defaultTranslate, en, zh } from '../lib/client/locales/index.js'
 import { steerCaptainReport } from '../lib/tools.js'
 import {
   installMemberSelectionRuntime,
+  resolveCaptainLlmSelection,
   resolveMemberLlmSelection,
   spawnMember,
 } from '../lib/members.js'
+import {
+  buildActivationDirective,
+  parseAgentTeamsArgs,
+} from '../lib/command.js'
 
 let failures = 0
 function check(label, condition, detail = '') {
@@ -832,6 +837,60 @@ try {
   emptyEffortRejected = true
 }
 check('empty explicit reasoning effort is rejected', emptyEffortRejected)
+
+// Captain model resolution tests
+const captainInherited = await resolveCaptainLlmSelection(selectionContext, captain, {})
+check(
+  'captain default route snapshots current session model and effort',
+  captainInherited.provider === 'captain-provider'
+    && captainInherited.model === 'captain-model'
+    && captainInherited.reasoningEffort === 'max',
+)
+
+const captainOverridden = await resolveCaptainLlmSelection(selectionContext, captain, {
+  provider: 'other-provider',
+  model: 'other-model',
+})
+check(
+  'captain custom route uses target model default effort',
+  captainOverridden.provider === 'other-provider'
+    && captainOverridden.model === 'other-model'
+    && captainOverridden.reasoningEffort === 'low',
+)
+
+const captainConfigDefaulted = await resolveCaptainLlmSelection(selectionContext, captain, {
+  defaultModel: 'configured-member-model',
+  defaultReasoningEffort: 'high',
+})
+check(
+  'captain config default model and effort take effect',
+  captainConfigDefaulted.model === 'configured-member-model'
+    && captainConfigDefaulted.reasoningEffort === 'high',
+)
+
+// Command flag parsing tests
+const parsedFlags = parseAgentTeamsArgs('--captain-model deepseek-reasoner --member-model deepseek-chat -cm opt-cap Build a fullstack app')
+check(
+  'parseAgentTeamsArgs extracts model flags and goal',
+  parsedFlags.captainModel === 'opt-cap'
+    && parsedFlags.memberModel === 'deepseek-chat'
+    && parsedFlags.goal === 'Build a fullstack app',
+)
+
+const singleModelParsed = parseAgentTeamsArgs('--model gpt-4o Run analysis')
+check(
+  'parseAgentTeamsArgs sets both captain and member model on --model',
+  singleModelParsed.captainModel === 'gpt-4o'
+    && singleModelParsed.memberModel === 'gpt-4o'
+    && singleModelParsed.goal === 'Run analysis',
+)
+
+const directiveWithFlags = buildActivationDirective(parsedFlags)
+check(
+  'buildActivationDirective includes captain and member model directives',
+  directiveWithFlags.includes('Captain LLM route overrides')
+    && directiveWithFlags.includes('Member LLM route overrides'),
+)
 
 let startSpec
 const spawnMemberRecord = {

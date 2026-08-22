@@ -66,8 +66,28 @@ export interface MemberLlmSelectionRequest {
   provider?: string
   /** Explicit model id; otherwise the plugin default or captain model is used. */
   model?: string
+  /** Plugin-level member provider default. */
+  defaultProvider?: string
   /** Plugin-level member model default. */
   defaultModel?: string
+  /** Plugin-level member reasoning effort default. */
+  defaultReasoningEffort?: string
+  /** Explicit reasoning effort; "default" selects the target model's default effort. */
+  reasoningEffort?: string
+}
+
+/** Optional captain-level route requested during team creation or config. */
+export interface CaptainLlmSelectionRequest {
+  /** Explicit LLM provider route. */
+  provider?: string
+  /** Explicit model id. */
+  model?: string
+  /** Plugin-level captain provider default. */
+  defaultProvider?: string
+  /** Plugin-level captain model default. */
+  defaultModel?: string
+  /** Plugin-level captain reasoning effort default. */
+  defaultReasoningEffort?: string
   /** Explicit reasoning effort; "default" selects the target model's default effort. */
   reasoningEffort?: string
 }
@@ -102,7 +122,7 @@ function selectionFromMember(member: TeamMember | undefined): MemberLlmSelection
   }
 }
 
-function modelSelection(selection: MemberLlmSelection): ModelSelection {
+export function modelSelection(selection: MemberLlmSelection): ModelSelection {
   return {
     provider: selection.provider,
     model: selection.model,
@@ -129,8 +149,10 @@ export async function resolveMemberLlmSelection(
 ): Promise<MemberLlmSelection> {
   const explicitProvider = request.provider?.trim()
   const explicitModel = request.model?.trim()
+  const defaultProvider = request.defaultProvider?.trim()
   const defaultModel = request.defaultModel?.trim()
   const explicitEffort = request.reasoningEffort?.trim()
+  const defaultEffort = request.defaultReasoningEffort?.trim()
   if (request.provider !== undefined && explicitProvider === '') {
     throw new Error('member LLM provider must not be empty')
   }
@@ -150,7 +172,7 @@ export async function resolveMemberLlmSelection(
   const current = captain.session.requestHeader()?.config
   const currentProvider = current?.provider ?? captain.options.provider
   const currentModel = current?.model ?? captain.options.model
-  const provider = explicitProvider ?? currentProvider
+  const provider = explicitProvider ?? (explicitModel !== undefined ? currentProvider : (defaultProvider ?? currentProvider))
   const model = explicitModel ?? defaultModel ?? currentModel
   if (provider === undefined || model === undefined) {
     throw new Error('cannot resolve the member LLM route from the current captain session')
@@ -161,13 +183,14 @@ export async function resolveMemberLlmSelection(
   // own default. Explicit effort still wins, while "default" forces that
   // target-default behavior even when the route did not change.
   const sameRoute = provider === currentProvider && model === currentModel
-  const reasoningEffort = explicitEffort === undefined
+  const chosenEffort = explicitEffort ?? (sameRoute ? defaultEffort : undefined)
+  const reasoningEffort = chosenEffort === undefined
     ? sameRoute
       ? current?.reasoningEffort
       : undefined
-    : explicitEffort === 'default'
+    : chosenEffort === 'default'
       ? undefined
-      : ReasoningEffortId(explicitEffort)
+      : ReasoningEffortId(chosenEffort)
   const resolved = await ctx.llm.resolveCallConfig({
     provider,
     model,
@@ -183,6 +206,72 @@ export async function resolveMemberLlmSelection(
       : { reasoningEffort: String(resolved.reasoningEffort) },
   }
 }
+
+/**
+ * Resolve the captain's complete model selection during team creation.
+ */
+export async function resolveCaptainLlmSelection(
+  ctx: Context,
+  captain: Agent,
+  request: CaptainLlmSelectionRequest,
+  signal?: AbortSignal,
+): Promise<MemberLlmSelection> {
+  const explicitProvider = request.provider?.trim()
+  const explicitModel = request.model?.trim()
+  const defaultProvider = request.defaultProvider?.trim()
+  const defaultModel = request.defaultModel?.trim()
+  const explicitEffort = request.reasoningEffort?.trim()
+  const defaultEffort = request.defaultReasoningEffort?.trim()
+
+  if (request.provider !== undefined && explicitProvider === '') {
+    throw new Error('captain LLM provider must not be empty')
+  }
+  if (request.model !== undefined && explicitModel === '') {
+    throw new Error('captain model must not be empty')
+  }
+  if (request.reasoningEffort !== undefined && explicitEffort === '') {
+    throw new Error('captain reasoning effort must not be empty')
+  }
+  if (explicitProvider !== undefined && explicitModel === undefined && defaultModel === undefined) {
+    throw new Error('an explicit captain LLM provider requires an explicit captain model')
+  }
+
+  const current = captain.session.requestHeader()?.config
+  const currentProvider = current?.provider ?? captain.options.provider
+  const currentModel = current?.model ?? captain.options.model
+  const provider = explicitProvider ?? defaultProvider ?? currentProvider
+  const model = explicitModel ?? defaultModel ?? currentModel
+  if (provider === undefined || model === undefined) {
+    throw new Error('cannot resolve the captain LLM route from the current session')
+  }
+
+  const sameRoute = provider === currentProvider && model === currentModel
+  const chosenEffort = explicitEffort ?? defaultEffort
+  const reasoningEffort = chosenEffort === undefined
+    ? sameRoute
+      ? current?.reasoningEffort
+      : undefined
+    : chosenEffort === 'default'
+      ? undefined
+      : ReasoningEffortId(chosenEffort)
+
+  const resolved = await ctx.llm.resolveCallConfig({
+    provider,
+    model,
+    ...reasoningEffort === undefined
+      ? {}
+      : { reasoningEffort },
+  }, signal)
+
+  return {
+    provider: resolved.provider,
+    model: resolved.model,
+    ...resolved.reasoningEffort === undefined
+      ? {}
+      : { reasoningEffort: String(resolved.reasoningEffort) },
+  }
+}
+
 
 /**
  * Install the member selection bridge for every fresh or cold-resumed

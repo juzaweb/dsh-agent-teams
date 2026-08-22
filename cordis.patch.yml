@@ -19,3 +19,7 @@
         stateDir: .agent-teams
         # Provider used to spawn member subagents ('spawn' or 'fork').
         memberProvider: spawn
+        # Optional captain model override (default: parent session model).
+        # captainModel: deepseek-reasoner
+        # Optional member model override (default: captain model).
+        # memberModel: deepseek-chat

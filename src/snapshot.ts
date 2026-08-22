@@ -26,6 +26,9 @@ export interface TeamActivityMember {
   readonly id: string
   readonly name: string
   readonly role: string
+  readonly provider?: string
+  readonly model?: string
+  readonly reasoningEffort?: string
   readonly status: MemberStatus
   readonly activity: 'working' | 'idle' | 'unknown'
   readonly progress: number
@@ -59,6 +62,9 @@ export interface TeamActivitySnapshot {
   readonly name: string
   readonly description?: string
   readonly captainSessionId: string
+  readonly captainProvider?: string
+  readonly captainModel?: string
+  readonly captainReasoningEffort?: string
   readonly members: readonly TeamActivityMember[]
   readonly tasks: readonly TeamActivityTask[]
   readonly messageCount: number
@@ -120,6 +126,9 @@ export async function assembleTeamSnapshot(
       id: member.id,
       name: member.name,
       role: member.role ?? '',
+      provider: member.provider,
+      model: member.model,
+      reasoningEffort: member.reasoningEffort,
       status: member.status,
       activity: options.historic === true
         ? 'idle'
@@ -144,6 +153,9 @@ export async function assembleTeamSnapshot(
     name: state.name,
     ...state.description !== undefined ? { description: state.description } : {},
     captainSessionId: state.captainSessionId,
+    captainProvider: state.captainProvider,
+    captainModel: state.captainModel,
+    captainReasoningEffort: state.captainReasoningEffort,
     members,
     tasks: tasks.map((task) => ({
       id: task.id,

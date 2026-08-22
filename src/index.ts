@@ -62,10 +62,18 @@ export interface Config {
    * `<workspace>/<stateDir>/<teamId>/` (default `.agent-teams`).
    */
   stateDir?: string
+  /** Optional LLM provider route default for the captain. */
+  captainProvider?: string
+  /** Optional model override applied to the captain session. */
+  captainModel?: string
+  /** Optional reasoning effort default for the captain. */
+  captainReasoningEffort?: string
   /** `ctx.subagents` provider used to spawn members; must support continuable children and personas (default `spawn`). */
   memberProvider?: string
   /** Optional model override applied to every member. */
   memberModel?: string
+  /** Optional reasoning effort default for members. */
+  memberReasoningEffort?: string
   /** Member delegation depth cap (default `1`; `0` forbids delegation entirely). */
   memberMaxDepth?: number
   /** Team size cap in members (default `8`). */
@@ -81,13 +89,17 @@ export interface Config {
 }
 
 export const Config: z<Config> = z.object({
-  stateDir: z.string().default('.agent-teams'),
-  memberProvider: z.string().default('spawn'),
-  memberModel: z.string(),
-  memberMaxDepth: z.natural().default(1),
-  maxMembers: z.natural().min(1).default(8),
-  promptSectionOrder: z.natural().default(117),
-  slashCommand: z.boolean().default(true),
+  stateDir: z.string().default('.agent-teams').description('State directory name under the workspace for team data'),
+  captainProvider: z.string().description('Optional LLM provider for Captain (e.g. deepseek, openai, anthropic)'),
+  captainModel: z.string().description('Optional LLM model override for Captain (e.g. deepseek-reasoner, o3-mini)'),
+  captainReasoningEffort: z.string().description('Optional reasoning effort for Captain (e.g. low, medium, high, max)'),
+  memberProvider: z.string().default('spawn').description('Subagents spawner provider (spawn or fork)'),
+  memberModel: z.string().description('Optional default LLM model for all Members (e.g. deepseek-chat, gpt-4o)'),
+  memberReasoningEffort: z.string().description('Optional default reasoning effort for Members'),
+  memberMaxDepth: z.natural().default(1).description('Member delegation depth cap (0 disables delegation)'),
+  maxMembers: z.natural().min(1).default(8).description('Maximum number of active members in a team'),
+  promptSectionOrder: z.natural().default(117).description('Prompt section injection order'),
+  slashCommand: z.boolean().default(true).description('Enable /agent-teams slash command and gesture trigger'),
 })
 
 import { buildCaptainUsageProtocol } from './brainstorm.ts'
@@ -95,8 +107,12 @@ import { buildCaptainUsageProtocol } from './brainstorm.ts'
 export function apply(ctx: Context, config: Config): void {
   const resolved: ToolsConfig = {
     stateDir: config.stateDir ?? '.agent-teams',
+    captainProvider: config.captainProvider,
+    captainModel: config.captainModel,
+    captainReasoningEffort: config.captainReasoningEffort,
     memberProvider: config.memberProvider ?? 'spawn',
     memberModel: config.memberModel,
+    memberReasoningEffort: config.memberReasoningEffort,
     memberMaxDepth: config.memberMaxDepth ?? 1,
     maxMembers: config.maxMembers ?? 8,
   }
