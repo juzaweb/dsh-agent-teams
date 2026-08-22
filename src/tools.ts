@@ -506,7 +506,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
       dependencies: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Task ids this task depends on (must be completed before this task can be claimed).',
+        description: 'Task IDs this task depends on (e.g. ["t1", "t2"]). Must be existing task IDs returned by agent_teams_create_task, NOT member names, role names, or wave labels.',
       },
       assignee: { type: 'string', description: 'Optional member name this task is intended for.' },
     },
@@ -536,7 +536,12 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
         const dependencies = args.dependencies ?? []
         for (const dependency of dependencies) {
           if (!fresh.tasks.some((task) => task.id === dependency)) {
-            throw new Error(`dependency "${dependency}" does not exist in team "${fresh.name}"`)
+            const isMember = fresh.members.some((member) => member.name === dependency)
+            const availableTasks = fresh.tasks.map((task) => task.id).join(', ') || 'none'
+            if (isMember) {
+              throw new Error(`dependency "${dependency}" is a member name, but "dependencies" must be task IDs (e.g. "t1", "t2"). Available task IDs: ${availableTasks}`)
+            }
+            throw new Error(`dependency task ID "${dependency}" does not exist in team "${fresh.name}". Available task IDs: ${availableTasks}`)
           }
         }
         if (args.assignee !== undefined) requireMember(fresh, args.assignee)
