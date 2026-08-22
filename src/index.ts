@@ -53,7 +53,6 @@ const WEB_SERVER_KEYS = ['webServer', 'httpServer'] as const
 const WORKSPACE_KEYS = ['workspaceRegistry', 'workspace'] as const
 
 export const name = 'agent-teams'
-export const description = 'Multi-agent team collaboration driven by natural language'
 export const inject = ['tools', 'llm', 'subagents', 'systemPrompt', 'agents']
 
 /** Plugin configuration. */
@@ -102,9 +101,6 @@ export const Config: z<Config> = z.object({
   promptSectionOrder: z.natural().default(117).description('Prompt section injection order'),
   slashCommand: z.boolean().default(true).description('Enable /agent-teams slash command and gesture trigger'),
 })
-
-export const Schema = Config
-export const schema = Config
 
 import { buildCaptainUsageProtocol } from './brainstorm.ts'
 
