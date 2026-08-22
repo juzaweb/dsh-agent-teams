@@ -23,6 +23,8 @@ import {
   readMailbox,
   readTeam,
   removeTeamDir,
+  resolveTaskDependency,
+  normalizeTaskRef,
   sanitizeKey,
   transitionError,
   unsatisfiedDependencies,
@@ -316,13 +318,24 @@ check('same status is a no-op', transitionError('failed', 'failed') === undefine
 
 console.log('3/8 dependency gating')
 const tasks = [
-  { id: 't1', status: 'completed' },
-  { id: 't2', status: 'pending' },
-  { id: 't3', status: 'failed' },
+  { id: 't1', subject: 'Create unit tests ThemeServiceProvider', status: 'completed' },
+  { id: 't2', subject: 'Implement theme manager', status: 'pending' },
+  { id: 't3', subject: 'Review and simplify', status: 'failed' },
 ]
 check('all-done deps satisfied', unsatisfiedDependencies(tasks, ['t1']).length === 0)
 check('pending dep blocks', unsatisfiedDependencies(tasks, ['t2']).length === 1)
 check('failed dep blocks too', unsatisfiedDependencies(tasks, ['t3']).length === 1)
+
+// Flexible dependency resolution tests
+check('resolve by exact id', resolveTaskDependency(tasks, 't1')?.id === 't1')
+check('resolve by uppercase id', resolveTaskDependency(tasks, 'T1')?.id === 't1')
+check('resolve by exact subject', resolveTaskDependency(tasks, 'Create unit tests ThemeServiceProvider')?.id === 't1')
+check('resolve by lowercase subject', resolveTaskDependency(tasks, 'create unit tests themeserviceprovider')?.id === 't1')
+check('resolve by slugified kebab subject', resolveTaskDependency(tasks, 'create-unit-tests-theme-service-provider')?.id === 't1')
+check('resolve by prefixed bracket id', resolveTaskDependency(tasks, '[t1] Create unit tests ThemeServiceProvider')?.id === 't1')
+check('resolve by prefixed colon id', resolveTaskDependency(tasks, 't2: Implement theme manager')?.id === 't2')
+check('resolve unknown returns undefined', resolveTaskDependency(tasks, 'non-existent-task') === undefined)
+check('resolve empty returns undefined', resolveTaskDependency(tasks, '') === undefined)
 
 console.log('4/8 on-disk team flow (temp dir)')
 const stateRoot = await mkdtemp(join(tmpdir(), 'dsh-agent-teams-verify-'))

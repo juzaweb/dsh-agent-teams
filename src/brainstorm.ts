@@ -111,7 +111,7 @@ PHASE 3: TEAM ASSEMBLY, ROLE ALLOCATION & DAG TASK DISPATCH
      a. Call agent_teams_create with a descriptive team name and mission goal.
      b. Assess task parallelism: If the mission contains multiple independent subtasks (e.g. tests across different modules, independent components), spawn dedicated parallel workers (e.g. engineer_1, engineer_2 or domain-specific names test_engineer, ui_engineer).
      c. IMMEDIATELY call agent_teams_add_member for each specialized worker role agreed upon (at minimum: reviewer and enough workers for parallel branches, max 3-4 concurrent workers per wave).
-     d. IMMEDIATELY call agent_teams_create_task to break down and assign initial tasks (CRITICAL: \`dependencies\` must only contain prerequisite task IDs like ["t1"], NEVER member names, roles, or wave labels).
+     d. IMMEDIATELY call agent_teams_create_task to break down and assign initial tasks (CRITICAL: \`dependencies\` must only contain prerequisite task IDs like ["t1"] or task subjects created in earlier waves, NEVER member names, roles, or wave labels). Prerequisite tasks must be created before downstream tasks that depend on them.
    - NEVER end your turn leaving 0 members or 0 tasks once team creation begins.
 2. Spawn Specialized Members & Parallel Workers (Mandatory Reviewer & Sizing Rule):
    - ALWAYS call agent_teams_add_member to assemble the specialized team:
@@ -126,7 +126,7 @@ PHASE 3: TEAM ASSEMBLY, ROLE ALLOCATION & DAG TASK DISPATCH
 3. Phased DAG Task Decomposition & Parallel Branching:
    - Break the mission into discrete, well-bounded tasks with agent_teams_create_task.
    - Disjoint File Scope Rule: For parallel tasks in the same wave, explicitly define non-overlapping target files/paths in the task description to prevent race conditions and merge conflicts.
-   - Wire dependencies using returned TASK IDs (e.g. ["t1"], ["t2"]) — NEVER pass member names, role names, or wave labels as dependencies:
+   - Wire dependencies using returned TASK IDs (e.g. ["t1"], ["t2"]) or exact task subjects — prerequisite tasks must be created BEFORE downstream tasks that depend on them. NEVER pass member names, role names, or wave labels as dependencies:
      * Pattern A: Single Implementation Pipeline:
        - Wave 1: Create task for [Research / Discovery / Grounding] (assignee: "researcher", dependencies: []) -> returns task_id "t1"
        - Wave 2: Create task for [Core Implementation / Changes] (assignee: "engineer", dependencies: ["t1"]) -> returns task_id "t2"

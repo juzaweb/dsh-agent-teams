@@ -87,6 +87,58 @@ export function sanitizeKey(name: string): string {
 }
 
 /**
+ * Normalize a task title or slug for flexible dependency matching.
+ */
+export function normalizeTaskRef(text: string): string {
+  const expanded = text.normalize('NFC').trim().replace(/([a-z\d])([A-Z])/g, '$1-$2')
+  return sanitizeKey(expanded)
+}
+
+/**
+ * Resolve a dependency reference (task ID, leading task ID prefix, exact subject, or slug)
+ * to an existing task in the team's task list.
+ *
+ * @param tasks - current team tasks.
+ * @param dependency - dependency string passed by caller (e.g. "t1", "t1: test", "create-unit-tests", or exact subject).
+ * @returns the matched TeamTask, or undefined if no match.
+ */
+export function resolveTaskDependency(tasks: readonly TeamTask[], dependency: string): TeamTask | undefined {
+  const trimmed = dependency.normalize('NFC').trim()
+  if (!trimmed) return undefined
+
+  // 1. Exact task ID match (e.g. "t1")
+  const byId = tasks.find((task) => task.id === trimmed)
+  if (byId) return byId
+
+  // 2. Case-insensitive task ID match (e.g. "T1")
+  const byIdCase = tasks.find((task) => task.id.toLowerCase() === trimmed.toLowerCase())
+  if (byIdCase) return byIdCase
+
+  // 3. Leading task ID match (e.g. "t1: ...", "[t1] ...", "t1 - ...")
+  const leadingIdMatch = trimmed.match(/^\[?(t\d+)\]?[:\s\-_]/i)
+  if (leadingIdMatch?.[1]) {
+    const candidateId = leadingIdMatch[1].toLowerCase()
+    const byLeadingId = tasks.find((task) => task.id.toLowerCase() === candidateId)
+    if (byLeadingId) return byLeadingId
+  }
+
+  // 4. Exact subject match (case-insensitive)
+  const bySubject = tasks.find((task) => task.subject.trim().toLowerCase() === trimmed.toLowerCase())
+  if (bySubject) return bySubject
+
+  // 5. Normalized slug match on subject or id
+  const targetRef = normalizeTaskRef(trimmed)
+  if (targetRef) {
+    const bySlug = tasks.find((task) => {
+      return normalizeTaskRef(task.subject) === targetRef || normalizeTaskRef(task.id) === targetRef
+    })
+    if (bySlug) return bySlug
+  }
+
+  return undefined
+}
+
+/**
  * Whether `dependencies` are all satisfied (every named task exists and
  * completed) for the given task list.
  * @param tasks - the team's tasks.

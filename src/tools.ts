@@ -32,6 +32,7 @@ import {
   recordRetiredMemberIds,
   releaseMailboxDelivery,
   readTeam,
+  resolveTaskDependency,
   sanitizeKey,
   transitionError,
   unsatisfiedDependencies,
@@ -506,7 +507,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
       dependencies: {
         type: 'array',
         items: { type: 'string' },
-        description: 'Task IDs this task depends on (e.g. ["t1", "t2"]). Must be existing task IDs returned by agent_teams_create_task, NOT member names, role names, or wave labels.',
+        description: 'Task IDs this task depends on (e.g. ["t1", "t2"]). Can be task IDs returned by agent_teams_create_task or task subjects/slugs. Must not be member names, role names, or wave labels.',
       },
       assignee: { type: 'string', description: 'Optional member name this task is intended for.' },
     },
@@ -534,14 +535,21 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
       const created = await withTeamLock(teamLockKey(stateRoot, team.id), async () => {
         const fresh = await requireFreshCaptainTeam(stateRoot, team.id, captain.id)
         const dependencies = args.dependencies ?? []
+        const resolvedDependencies: string[] = []
         for (const dependency of dependencies) {
-          if (!fresh.tasks.some((task) => task.id === dependency)) {
+          const matchedTask = resolveTaskDependency(fresh.tasks, dependency)
+          if (!matchedTask) {
             const isMember = fresh.members.some((member) => member.name === dependency)
-            const availableTasks = fresh.tasks.map((task) => task.id).join(', ') || 'none'
+            const availableTasks = fresh.tasks.length > 0
+              ? fresh.tasks.map((task) => `${task.id} ("${task.subject}")`).join(', ')
+              : 'none (no tasks have been created yet; create prerequisite tasks first)'
             if (isMember) {
-              throw new Error(`dependency "${dependency}" is a member name, but "dependencies" must be task IDs (e.g. "t1", "t2"). Available task IDs: ${availableTasks}`)
+              throw new Error(`dependency "${dependency}" is a member name, but "dependencies" must be task IDs (e.g. "t1", "t2") or task subjects. Available tasks: ${availableTasks}`)
             }
-            throw new Error(`dependency task ID "${dependency}" does not exist in team "${fresh.name}". Available task IDs: ${availableTasks}`)
+            throw new Error(`dependency "${dependency}" does not exist in team "${fresh.name}". Available tasks: ${availableTasks}`)
+          }
+          if (!resolvedDependencies.includes(matchedTask.id)) {
+            resolvedDependencies.push(matchedTask.id)
           }
         }
         if (args.assignee !== undefined) requireMember(fresh, args.assignee)
@@ -551,7 +559,7 @@ export function registerAgentTeamsTools(ctx: Context, config: ToolsConfig): void
           description: args.description,
           status: 'pending',
           assignee: args.assignee,
-          dependencies,
+          dependencies: resolvedDependencies,
           attempt: 0,
           createdAt: Date.now(),
           updatedAt: Date.now(),
